@@ -1,0 +1,36 @@
+# PlatformIO
+.pio/
+.vscode/
+.pioenvs/
+.piolibdeps/
+.clang_complete
+.gcc-flags.json
+
+# Build directories
+build/
+.build/
+
+# IDE
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compiled files
+*.o
+*.a
+*.so
+*.elf
+*.bin
+*.hex
+
+# Local configuration (sensitive data)
+include/config_local.h
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+*.log
