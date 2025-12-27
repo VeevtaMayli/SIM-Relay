@@ -181,11 +181,33 @@ bool SmsReader::parseSmsResponse(const String& response, SmsMessage& sms) {
 
 String SmsReader::decodeUcs2(const String& ucs2) {
     // UCS2 to UTF-8 conversion (supports Cyrillic, emoji with surrogate pairs)
+    if (ucs2.length() % 4 != 0) {
+        DEBUG_PRINTLN("ERROR: Invalid UCS2 length (not divisible by 4)");
+        return "";
+    }
+
     String out = "";
     uint16_t prevHigh = 0;
 
-    for (int i = 0; i < ucs2.length(); i += 4) {
+    for (int i = 0; i + 3 < ucs2.length(); i += 4) {
         String hexChar = ucs2.substring(i, i + 4);
+
+        bool isValidHex = true;
+        for (int j = 0; j < 4; j++) {
+            char c = hexChar[j];
+            if (!((c >= '0' && c <= '9') ||
+                  (c >= 'A' && c <= 'F') ||
+                  (c >= 'a' && c <= 'f'))) {
+                isValidHex = false;
+                break;
+            }
+        }
+
+        if (!isValidHex) {
+            DEBUG_PRINTLN("ERROR: Invalid hex character in UCS2 string");
+            return "";
+        }
+
         uint16_t code = (uint16_t)strtol(hexChar.c_str(), NULL, 16);
 
         if (code >= 0xD800 && code <= 0xDBFF) {
