@@ -140,7 +140,7 @@
     #define MODEM_GPS_ENABLE_LEVEL              (-1)
 
 
-    #ifndef TINY_GSM_MODEM_A7670
+    #if !defined(TINY_GSM_MODEM_A7670) && !defined(TINY_GSM_MODEM_A76XXSSL)
         #define TINY_GSM_MODEM_A7670
     #endif
 
@@ -820,7 +820,7 @@
 
 
 
-#if defined(TINY_GSM_MODEM_SIM7670G) || defined(TINY_GSM_MODEM_A7670) || defined(TINY_GSM_MODEM_A7608)
+#if defined(TINY_GSM_MODEM_SIM7670G) || defined(TINY_GSM_MODEM_A7670) || defined(TINY_GSM_MODEM_A7608) || defined(TINY_GSM_MODEM_A76XXSSL)
     #define MODEM_REG_SMS_ONLY
 #endif
 
@@ -828,7 +828,7 @@
 // #define LILYGO_T_A7608X_DC_S3
 
 // Power on/off sequence
-#if defined(TINY_GSM_MODEM_A7670)
+#if defined(TINY_GSM_MODEM_A7670) || defined(TINY_GSM_MODEM_A76XXSSL)
     #define MODEM_POWERON_PULSE_WIDTH_MS      (100)
     #define MODEM_POWEROFF_PULSE_WIDTH_MS     (3000)
 #elif defined(TINY_GSM_MODEM_SIM7670G)

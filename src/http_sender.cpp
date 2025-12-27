@@ -15,8 +15,8 @@ bool HttpSender::sendSmsToServer(const SmsMessage& sms) {
     DEBUG_PRINT(":");
     DEBUG_PRINTLN(SERVER_PORT);
 
-    // Create HTTP client
-    TinyGsmClient client(modem);
+    // Create HTTPS client (SSL/TLS)
+    TinyGsmClientSecure client(modem);
     HttpClient http(client, SERVER_HOST, SERVER_PORT);
 
     // Set timeout

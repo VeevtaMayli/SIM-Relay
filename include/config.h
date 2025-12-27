@@ -3,8 +3,6 @@
 
 #include "secrets.h"
 
-#define TINY_GSM_MODEM_SIM7600
-
 #define SERVER_PATH "/api/sms"
 
 // ============================================
