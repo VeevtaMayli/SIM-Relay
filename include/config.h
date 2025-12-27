@@ -1,36 +1,11 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// ============================================
-// MODEM CONFIGURATION
-// ============================================
-// A7670X uses SIM7600 compatible API in TinyGSM
+#include "secrets.h"
+
 #define TINY_GSM_MODEM_SIM7600
 
-// ============================================
-// SERVER CONFIGURATION
-// ============================================
-#define SERVER_HOST "your-server.com"  // Your backend server hostname or IP
-#define SERVER_PORT 80                 // HTTP port (not HTTPS)
-#define SERVER_PATH "/api/sms"         // API endpoint path
-
-// ============================================
-// GPRS/NETWORK CONFIGURATION
-// ============================================
-// Magticom (Georgia) - for testing
-#define GPRS_APN_MAGTICOM "internet"
-#define GPRS_USER_MAGTICOM ""
-#define GPRS_PASS_MAGTICOM ""
-
-// MegaFon (Russia) - for production
-#define GPRS_APN_MEGAFON "internet"
-#define GPRS_USER_MEGAFON ""
-#define GPRS_PASS_MEGAFON ""
-
-// Active APN (change based on SIM card)
-#define GPRS_APN GPRS_APN_MEGAFON
-#define GPRS_USER GPRS_USER_MEGAFON
-#define GPRS_PASS GPRS_PASS_MEGAFON
+#define SERVER_PATH "/api/sms"
 
 // ============================================
 // TIMING CONFIGURATION

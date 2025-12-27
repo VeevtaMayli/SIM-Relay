@@ -26,6 +26,7 @@ build/
 
 # Local configuration (sensitive data)
 include/config_local.h
+include/secrets.h
 
 # Python
 __pycache__/
