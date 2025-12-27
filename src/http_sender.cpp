@@ -29,8 +29,8 @@ bool HttpSender::sendSmsToServer(const SmsMessage& sms) {
 
     // Send POST request
     DEBUG_PRINTLN("Sending HTTP POST request...");
-    int err = http.post(SERVER_PATH, "application/json", jsonPayload);
-
+    http.beginRequest();
+    int err = http.post(SERVER_PATH);
     if (err != 0) {
         lastError = "Connection failed, error code: " + String(err);
         DEBUG_PRINT("ERROR: ");
@@ -38,6 +38,12 @@ bool HttpSender::sendSmsToServer(const SmsMessage& sms) {
         http.stop();
         return false;
     }
+
+    http.sendHeader("Content-Type", "application/json");
+    http.sendHeader("X-API-Key", API_KEY);
+    http.sendHeader("Content-Length", jsonPayload.length());
+    http.endRequest();
+    http.print(jsonPayload);
 
     // Get status code
     lastStatusCode = http.responseStatusCode();
