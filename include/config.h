@@ -2,6 +2,12 @@
 #define CONFIG_H
 
 // ============================================
+// MODEM CONFIGURATION
+// ============================================
+// A7670X uses SIM7600 compatible API in TinyGSM
+#define TINY_GSM_MODEM_SIM7600
+
+// ============================================
 // SERVER CONFIGURATION
 // ============================================
 #define SERVER_HOST "your-server.com"  // Your backend server hostname or IP

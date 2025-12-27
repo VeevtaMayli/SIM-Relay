@@ -2,8 +2,8 @@
 #define SMS_READER_H
 
 #include <Arduino.h>
-#include <TinyGsmClient.h>
 #include "config.h"
+#include <TinyGsmClient.h>
 
 struct SmsMessage {
     int index;           // SMS index in SIM memory

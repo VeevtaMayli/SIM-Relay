@@ -2,9 +2,9 @@
 #define MODEM_MANAGER_H
 
 #include <Arduino.h>
-#include <TinyGsmClient.h>
 #include "config.h"
 #include "utilities.h"
+#include <TinyGsmClient.h>
 
 class ModemManager {
 public:

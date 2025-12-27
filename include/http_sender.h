@@ -2,10 +2,10 @@
 #define HTTP_SENDER_H
 
 #include <Arduino.h>
+#include "config.h"
 #include <TinyGsmClient.h>
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
-#include "config.h"
 #include "sms_reader.h"
 
 class HttpSender {
