@@ -4,7 +4,7 @@ SMS Gateway Device for LilyGO T-Call-A7670X-V1-0
 
 ## Overview
 
-SIM-Relay is a firmware for the LilyGO T-Call-A7670X board that monitors incoming SMS messages on a SIM card and forwards them to a backend server via HTTP. The device acts as a "dumb relay" - it receives SMS, performs minimal processing (UCS2 to UTF-8 decoding), and sends the data to your server.
+SIM-Relay is a firmware for the LilyGO T-Call-A7670X board that monitors incoming SMS messages on a SIM card and forwards them to a backend server via HTTPS. The device acts as a "dumb relay" - it receives SMS, performs minimal processing (UCS2 to UTF-8 decoding), and sends the data to your server.
 
 ### Architecture
 
@@ -12,7 +12,7 @@ SIM-Relay is a firmware for the LilyGO T-Call-A7670X board that monitors incomin
 SIM Card (SMS + Data)
         ↓
 LilyGO T-Call-A7670X (SIM-Relay)
-        ↓  HTTP POST (JSON)
+        ↓  HTTPS POST (JSON + API Key)
 Backend API (SIM-Orchestrator)
         ↓
 Telegram Bot API (HTTPS)
@@ -22,10 +22,11 @@ Telegram Bot API (HTTPS)
 
 - **SMS Monitoring**: Automatically checks for new SMS every 10 seconds
 - **UCS2/UTF-8 Support**: Decodes Cyrillic text and emoji
-- **HTTP POST**: Sends SMS data to backend server as JSON
+- **Secure HTTPS**: TLS-encrypted communication with backend server
+- **API Key Authentication**: X-API-Key header for request authentication
 - **Reliable Delivery**: Only deletes SMS after successful server response (200 OK)
 - **Network Recovery**: Automatically reconnects on network failures
-- **Configurable**: Easy configuration via `config.h`
+- **Secrets Separation**: Sensitive data in separate `secrets.h` (git-ignored)
 
 ## Hardware Requirements
 
@@ -49,18 +50,20 @@ Telegram Bot API (HTTPS)
 SIM-Relay/
 ├── platformio.ini          # PlatformIO configuration
 ├── include/
-│   ├── config.h            # Configuration file (server, APN, intervals)
+│   ├── config.h            # Configuration file (intervals, debug settings)
+│   ├── secrets.h           # Sensitive data (git-ignored, create from example)
+│   ├── secrets.h.example   # Template for secrets.h
 │   ├── utilities.h         # Hardware pin definitions
 │   ├── modem_manager.h     # Modem initialization and network management
 │   ├── sms_reader.h        # SMS reading and UCS2 decoding
-│   └── http_sender.h       # HTTP POST to server
+│   └── http_sender.h       # HTTPS POST to server
 ├── src/
 │   ├── main.cpp            # Main application logic
 │   ├── modem_manager.cpp
 │   ├── sms_reader.cpp
 │   └── http_sender.cpp
 └── lib/
-    ├── TinyGSM/            # Modem communication library
+    ├── TinyGSM/            # Modem communication library (SSL fork)
     ├── ArduinoHttpClient/  # HTTP client library
     └── StreamDebugger/     # AT command debugging
 ```
@@ -79,24 +82,32 @@ git clone <repository-url>
 cd SIM-Relay
 ```
 
-### 3. Configure
+### 3. Configure Secrets
 
-Edit `include/config.h`:
+Copy `include/secrets.h.example` to `include/secrets.h` and edit:
 
 ```cpp
-// Server configuration
 #define SERVER_HOST "your-server.com"  // Your backend server
-#define SERVER_PORT 80
-#define SERVER_PATH "/api/sms"
+#define SERVER_PORT 443                // HTTPS port
+#define API_KEY "your-secret-api-key-min-32-characters-long"
 
-// Select APN based on your SIM card
-#define GPRS_APN GPRS_APN_MEGAFON  // or GPRS_APN_MAGTICOM
-
-// Optional: Adjust intervals
-#define SMS_CHECK_INTERVAL 10000   // Check every 10 seconds
+#define GPRS_APN "internet"  // Your carrier's APN
+#define GPRS_USER ""         // APN username (if required)
+#define GPRS_PASS ""         // APN password (if required)
 ```
 
-### 4. Build and Upload
+**Important**: `secrets.h` is git-ignored to prevent accidental credential exposure.
+
+### 4. Configure Settings (Optional)
+
+Edit `include/config.h` to adjust timing and debug settings:
+
+```cpp
+#define SMS_CHECK_INTERVAL 10000   // Check every 10 seconds
+#define ENABLE_SERIAL_DEBUG 1      // Enable debug output
+```
+
+### 5. Build and Upload
 
 ```bash
 # Build firmware
@@ -113,15 +124,16 @@ pio device monitor
 
 ### Server Settings
 
-The device sends HTTP POST requests to your backend server:
+The device sends HTTPS POST requests to your backend server with API Key authentication:
 
-**Endpoint**: `http://SERVER_HOST:SERVER_PORT/SERVER_PATH`
+**Endpoint**: `https://SERVER_HOST:SERVER_PORT/SERVER_PATH`
 
 **Request**:
 ```http
 POST /api/sms HTTP/1.1
 Host: your-server.com
 Content-Type: application/json
+X-API-Key: your-secret-api-key-min-32-characters-long
 
 {
   "sender": "+79991234567",
@@ -140,25 +152,24 @@ Content-Type: application/json
 }
 ```
 
+**Error Responses**:
+- `401 Unauthorized` - Missing X-API-Key header
+- `403 Forbidden` - Invalid API key
+
 ### APN Configuration
 
-Edit `include/config.h` to match your carrier:
+Edit `include/secrets.h` to set your carrier's APN:
 
 ```cpp
-// For MegaFon (Russia)
-#define GPRS_APN GPRS_APN_MEGAFON
-
-// For Magticom (Georgia)
-#define GPRS_APN GPRS_APN_MAGTICOM
+#define GPRS_APN "internet"   // Common for many carriers
+#define GPRS_USER ""          // Usually empty
+#define GPRS_PASS ""          // Usually empty
 ```
 
-To add new carriers, add entries to `config.h`:
-
-```cpp
-#define GPRS_APN_YOURCARRIER "your.apn.here"
-#define GPRS_USER_YOURCARRIER "username"
-#define GPRS_PASS_YOURCARRIER "password"
-```
+Common APNs:
+- **MegaFon** (Russia): `internet`
+- **Magticom** (Georgia): `internet`
+- **Beeline** (Russia): `internet.beeline.ru`
 
 ### Debug Output
 
@@ -261,14 +272,16 @@ HTTP Status Code: 200
 3. Check signal strength (move to window/outdoors)
 4. Enable debug and check AT commands
 
-### HTTP POST fails
+### HTTPS POST fails
 
-1. Verify server is reachable
-2. Check firewall settings on server
-3. Test with `curl` from another device:
+1. Verify server is reachable and has valid SSL certificate
+2. Check firewall settings on server (port 443)
+3. Verify API key matches on both device and server
+4. Test with `curl` from another device:
    ```bash
-   curl -X POST http://your-server.com/api/sms \
+   curl -X POST https://your-server.com/api/sms \
      -H "Content-Type: application/json" \
+     -H "X-API-Key: your-secret-api-key" \
      -d '{"sender":"+test","text":"test","timestamp":"test"}'
    ```
 
@@ -310,9 +323,13 @@ TinyGsm modem(debugger);
 
 ### Device → Server
 
-**Endpoint**: `POST /api/sms`
+**Endpoint**: `POST /api/sms` (HTTPS)
 
-**Content-Type**: `application/json`
+**Headers**:
+```
+Content-Type: application/json
+X-API-Key: <your-api-key>
+```
 
 **Payload**:
 ```json
@@ -331,8 +348,14 @@ HTTP/1.1 200 OK
 }
 ```
 
-**Error Response**:
+**Error Responses**:
 ```json
+HTTP/1.1 401 Unauthorized
+API Key missing
+
+HTTP/1.1 403 Forbidden
+Invalid API Key
+
 HTTP/1.1 500 Internal Server Error
 {
   "error": "error description"
