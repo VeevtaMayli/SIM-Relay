@@ -148,9 +148,8 @@ bool SmsReader::parseSmsResponse(const String& response, SmsMessage& sms) {
 #endif
     }
 
-    // Extract timestamp (between fourth and fifth quotes)
+    // Extract timestamp (after sender, format: ,,"timestamp")
     int timestampStart = response.indexOf('"', senderEnd + 1);
-    timestampStart = response.indexOf('"', timestampStart + 1);
     int timestampEnd = response.indexOf('"', timestampStart + 1);
 
     if (timestampStart > 0 && timestampEnd > timestampStart) {
