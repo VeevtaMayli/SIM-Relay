@@ -53,15 +53,23 @@ bool ModemManager::powerOnModem() {
     delay(MODEM_POWERON_PULSE_WIDTH_MS);
     digitalWrite(BOARD_PWRKEY_PIN, LOW);
 
-    // Start serial communication with modem
     SerialAT.begin(MODEM_BAUDRATE, SERIAL_8N1, MODEM_RX_PIN, MODEM_TX_PIN);
 
     DEBUG_PRINTLN("Waiting for modem to start...");
     delay(3000);
 
-    // Initialize modem
     if (!modem.init()) {
-        DEBUG_PRINTLN("ERROR: Modem init() failed");
+        DEBUG_PRINTLN("modem.init() returned false, checking if modem responds...");
+
+        String name = modem.getModemName();
+        if (name.length() > 0) {
+            DEBUG_PRINTLN("Modem already running (hot restart detected)");
+            DEBUG_PRINT("Modem: ");
+            DEBUG_PRINTLN(name);
+            return true;
+        }
+
+        DEBUG_PRINTLN("ERROR: Modem not responding");
         return false;
     }
 
