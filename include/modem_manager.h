@@ -13,13 +13,13 @@ public:
     // Initialization
     bool init();
 
-    // Network management
-    bool connectNetwork();
-    bool isConnected();
-    void reconnect();
-
-    // Get modem instance
+    // Get modem instance (used for SMS operations)
     TinyGsm& getModem() { return modem; }
+
+    // TODO: GPRS fallback - uncomment when implementing WiFi fallback to GPRS
+    // bool connectNetwork();
+    // bool isConnected();
+    // void reconnect();
 
 private:
     TinyGsm modem;
@@ -28,9 +28,9 @@ private:
     bool initializeHardware();
     bool powerOnModem();
 
-    // Network helpers
-    bool waitForNetwork(uint32_t timeout = 60000);
-    bool connectGPRS();
+    // TODO: GPRS fallback - uncomment when implementing WiFi fallback to GPRS
+    // bool waitForNetwork(uint32_t timeout = 60000);
+    // bool connectGPRS();
 };
 
 #endif // MODEM_MANAGER_H

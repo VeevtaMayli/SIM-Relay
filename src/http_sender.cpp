@@ -1,6 +1,6 @@
 #include "http_sender.h"
 
-HttpSender::HttpSender(TinyGsm& m) : modem(m), lastStatusCode(0) {}
+HttpSender::HttpSender() : lastStatusCode(0) {}
 
 bool HttpSender::sendSmsToServer(const SmsMessage& sms) {
     if (!sms.isValid()) {
@@ -9,14 +9,24 @@ bool HttpSender::sendSmsToServer(const SmsMessage& sms) {
         return false;
     }
 
-    DEBUG_PRINTLN("=== Sending SMS to Server ===");
+    DEBUG_PRINTLN("=== Sending SMS to Server (WiFi) ===");
     DEBUG_PRINT("Server: ");
     DEBUG_PRINT(SERVER_HOST);
     DEBUG_PRINT(":");
     DEBUG_PRINTLN(SERVER_PORT);
 
-    // Create HTTPS client (SSL/TLS)
-    TinyGsmClientSecure client(modem);
+    // Create HTTPS client using ESP32 WiFi (not modem)
+    WiFiClientSecure client;
+
+#if ENABLE_SERIAL_DEBUG
+    // For debugging: skip certificate verification
+    client.setInsecure();
+    DEBUG_PRINTLN("WARNING: SSL certificate verification disabled (debug mode)");
+#else
+    // Production: verify server certificate
+    client.setCACert(ISRG_ROOT_X1_CA);
+#endif
+
     HttpClient http(client, SERVER_HOST, SERVER_PORT);
 
     // Set timeout

@@ -1,329 +1,51 @@
 # SIM-Relay
 
-SMS Gateway Device for LilyGO T-Call-A7670X-V1-0
+SMS Gateway for LilyGO T-Call-A7670X. Receives SMS via LTE modem, forwards to server via WiFi.
 
-## Overview
-
-SIM-Relay is a firmware for the LilyGO T-Call-A7670X board that monitors incoming SMS messages on a SIM card and forwards them to a backend server via HTTPS. The device acts as a "dumb relay" - it receives SMS, performs minimal processing (UCS2 to UTF-8 decoding), and sends the data to your server.
-
-### Architecture
+## Architecture
 
 ```
-SIM Card (SMS + Data)
-        ↓
-LilyGO T-Call-A7670X (SIM-Relay)
-        ↓  HTTPS POST (JSON + API Key)
-Backend API (SIM-Orchestrator)
-        ↓
-Telegram Bot API (HTTPS)
+SIM Card ──► A7670 Modem ──► SmsReader ─┐
+                                        ├──► main.cpp ──► Server (HTTPS)
+WiFi Router ──► ESP32 WiFi ──► HttpSender ─┘
 ```
 
-## Features
+**Hybrid design**: LTE modem for SMS, ESP32 WiFi for HTTP.
 
-- **SMS Monitoring**: Automatically checks for new SMS every 10 seconds
-- **UCS2/UTF-8 Support**: Decodes Cyrillic text and emoji
-- **Secure HTTPS**: TLS-encrypted communication with backend server
-- **API Key Authentication**: X-API-Key header for request authentication
-- **Reliable Delivery**: Only deletes SMS after successful server response (200 OK)
-- **Network Recovery**: Automatically reconnects on network failures
-- **Secrets Separation**: Sensitive data in separate `secrets.h` (git-ignored)
+## Quick Start
 
-## Hardware Requirements
+1. Copy `include/secrets.h.example` to `include/secrets.h`
+2. Configure:
+   ```cpp
+   #define SERVER_HOST "your-server.com"
+   #define SERVER_PORT 443
+   #define API_KEY "your-secret-api-key-min-32-characters-long"
 
-- **Board**: LilyGO T-Call-A7670X-V1-0
-- **SIM Card**: Active SIM with SMS and data plan
-- **Power**: USB-C or battery
-
-## Supported SIM Cards
-
-### Testing
-- **Magticom** (Georgia)
-  - APN: `internet`
-
-### Production
-- **MegaFon** (Russia)
-  - APN: `internet`
+   #define WIFI_SSID "your-wifi-ssid"
+   #define WIFI_PASSWORD "your-wifi-password"
+   ```
+3. Build and upload:
+   ```bash
+   pio run --target upload
+   pio device monitor
+   ```
 
 ## Project Structure
 
 ```
-SIM-Relay/
-├── platformio.ini          # PlatformIO configuration
-├── include/
-│   ├── config.h            # Configuration file (intervals, debug settings)
-│   ├── secrets.h           # Sensitive data (git-ignored, create from example)
-│   ├── secrets.h.example   # Template for secrets.h
-│   ├── utilities.h         # Hardware pin definitions
-│   ├── modem_manager.h     # Modem initialization and network management
-│   ├── sms_reader.h        # SMS reading and UCS2 decoding
-│   └── http_sender.h       # HTTPS POST to server
-├── src/
-│   ├── main.cpp            # Main application logic
-│   ├── modem_manager.cpp
-│   ├── sms_reader.cpp
-│   └── http_sender.cpp
-└── lib/
-    ├── TinyGSM/            # Modem communication library (SSL fork)
-    ├── ArduinoHttpClient/  # HTTP client library
-    └── StreamDebugger/     # AT command debugging
-```
-
-## Installation
-
-### 1. Prerequisites
-
-- [PlatformIO Core](https://platformio.org/install) or [PlatformIO IDE](https://platformio.org/platformio-ide)
-- USB-C cable for programming
-
-### 2. Clone Repository
-
-```bash
-git clone <repository-url>
-cd SIM-Relay
-```
-
-### 3. Configure Secrets
-
-Copy `include/secrets.h.example` to `include/secrets.h` and edit:
-
-```cpp
-#define SERVER_HOST "your-server.com"  // Your backend server
-#define SERVER_PORT 443                // HTTPS port
-#define API_KEY "your-secret-api-key-min-32-characters-long"
-
-#define GPRS_APN "internet"  // Your carrier's APN
-#define GPRS_USER ""         // APN username (if required)
-#define GPRS_PASS ""         // APN password (if required)
-```
-
-**Important**: `secrets.h` is git-ignored to prevent accidental credential exposure.
-
-### 4. Configure Settings (Optional)
-
-Edit `include/config.h` to adjust timing and debug settings:
-
-```cpp
-#define SMS_CHECK_INTERVAL 10000   // Check every 10 seconds
-#define ENABLE_SERIAL_DEBUG 1      // Enable debug output
-```
-
-### 5. Build and Upload
-
-```bash
-# Build firmware
-pio run
-
-# Upload to device
-pio run --target upload
-
-# Monitor serial output
-pio device monitor
-```
-
-## Configuration
-
-### Server Settings
-
-The device sends HTTPS POST requests to your backend server with API Key authentication:
-
-**Endpoint**: `https://SERVER_HOST:SERVER_PORT/SERVER_PATH`
-
-**Request**:
-```http
-POST /api/sms HTTP/1.1
-Host: your-server.com
-Content-Type: application/json
-X-API-Key: your-secret-api-key-min-32-characters-long
-
-{
-  "sender": "+79991234567",
-  "text": "Ваш код подтверждения: 1234",
-  "timestamp": "2025-12-26 14:30:15"
-}
-```
-
-**Expected Response**:
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{
-  "status": "received"
-}
-```
-
-**Error Responses**:
-- `401 Unauthorized` - Missing X-API-Key header
-- `403 Forbidden` - Invalid API key
-
-### APN Configuration
-
-Edit `include/secrets.h` to set your carrier's APN:
-
-```cpp
-#define GPRS_APN "internet"   // Common for many carriers
-#define GPRS_USER ""          // Usually empty
-#define GPRS_PASS ""          // Usually empty
-```
-
-Common APNs:
-- **MegaFon** (Russia): `internet`
-- **Magticom** (Georgia): `internet`
-- **Beeline** (Russia): `internet.beeline.ru`
-
-### Debug Output
-
-Enable/disable debug messages:
-
-```cpp
-#define ENABLE_SERIAL_DEBUG 1  // 1 = enable, 0 = disable
-```
-
-## Usage
-
-### Normal Operation
-
-1. Insert SIM card into the board
-2. Power on the device
-3. Device will:
-   - Initialize modem
-   - Register on network
-   - Connect GPRS
-   - Start monitoring SMS
-
-4. When SMS arrives:
-   - Device reads and decodes SMS
-   - Sends to backend server via HTTP POST
-   - If server responds 200 OK → deletes SMS from SIM
-   - If error → keeps SMS for retry (10 seconds later)
-
-### Serial Monitor Output
-
-```
-========================================
-    SIM-Relay: SMS Gateway Device
-========================================
-
-Step 1: Initializing modem...
-Modem Info: SIMCOM_A7670E_V1.01
-
-Step 2: Connecting to network...
-Network registered
-GPRS connected
-Local IP: 10.123.45.67
-
-Step 3: Initializing SMS reader...
-SMS Reader initialized successfully
-
-Step 4: Initializing HTTP sender...
-HTTP sender initialized
-
-========================================
-   System Ready - Monitoring SMS...
-========================================
-
->>> Found 1 unread SMS <<<
-
---- Processing SMS 1/1 (Index: 1) ---
-From: +79991234567
-Text: Ваш код: 1234
-=== Sending SMS to Server ===
-HTTP Status Code: 200
-✓ SMS successfully sent to server
-✓ SMS deleted from SIM
-
---- SMS processing completed ---
-```
-
-## Error Handling
-
-### Network Loss
-
-- Device checks network every 60 seconds
-- Automatically reconnects if connection lost
-- SMS remain on SIM until network restored
-
-### Server Errors
-
-| Error | Device Behavior |
-|-------|----------------|
-| Connection timeout | SMS stays on SIM, retry in 10s |
-| HTTP 5xx | SMS stays on SIM, retry in 10s |
-| HTTP 200 OK | SMS deleted from SIM |
-
-### SIM Memory Full
-
-- Maximum ~30-50 SMS on typical SIM
-- Device deletes SMS only after successful send
-- Monitor serial output for warnings
-
-## Troubleshooting
-
-### Modem won't start
-
-1. Check power supply (USB-C or battery)
-2. Check SIM card insertion
-3. Try power cycle (unplug/replug)
-
-### Network registration fails
-
-1. Check SIM card has active service
-2. Verify APN settings for your carrier
-3. Check signal strength (move to window/outdoors)
-4. Enable debug and check AT commands
-
-### HTTPS POST fails
-
-1. Verify server is reachable and has valid SSL certificate
-2. Check firewall settings on server (port 443)
-3. Verify API key matches on both device and server
-4. Test with `curl` from another device:
-   ```bash
-   curl -X POST https://your-server.com/api/sms \
-     -H "Content-Type: application/json" \
-     -H "X-API-Key: your-secret-api-key" \
-     -d '{"sender":"+test","text":"test","timestamp":"test"}'
-   ```
-
-### SMS not decoded properly
-
-- Verify `SMS_ENCODING_UCS2` is enabled in `config.h`
-- Check that SMS is in UCS2 format (not GSM7)
-- Enable debug output to see raw SMS data
-
-## Development
-
-### Add New Features
-
-1. **Custom SMS Filtering**:
-   - Modify `sms_reader.cpp` to filter by sender
-   - Add whitelist/blacklist in `config.h`
-
-2. **Additional Data Fields**:
-   - Edit `http_sender.cpp` `createJsonPayload()`
-   - Add device ID, signal strength, etc.
-
-3. **Local Storage**:
-   - Add SD card support for offline buffering
-   - Store failed sends for later retry
-
-### Debugging
-
-Enable AT command debugging:
-
-```cpp
-// In src/modem_manager.cpp
-#define DUMP_AT_COMMANDS
-#include <StreamDebugger.h>
-StreamDebugger debugger(SerialAT, Serial);
-TinyGsm modem(debugger);
+include/
+├── config.h          # Timing, debug settings
+├── secrets.h         # Credentials (git-ignored)
+├── ca_cert.h         # Let's Encrypt root CA
+├── wifi_manager.h    # WiFi connection
+├── modem_manager.h   # LTE modem (SMS only)
+├── sms_reader.h      # SMS reading/decoding
+└── http_sender.h     # HTTPS POST via WiFi
 ```
 
 ## API Contract
 
-### Device → Server
-
-**Endpoint**: `POST /api/sms` (HTTPS)
+**Endpoint**: `POST /api/sms`
 
 **Headers**:
 ```
@@ -334,49 +56,37 @@ X-API-Key: <your-api-key>
 **Payload**:
 ```json
 {
-  "sender": "string (phone number)",
-  "text": "string (UTF-8 decoded message)",
-  "timestamp": "string (date/time from SMS)"
+  "sender": "+79991234567",
+  "text": "Your message",
+  "timestamp": "2025-12-28 14:30:15"
 }
 ```
 
-**Success Response**:
-```json
-HTTP/1.1 200 OK
-{
-  "status": "received"
-}
-```
+**Response**: `200 OK` = SMS deleted from SIM, otherwise retry in 10s.
 
-**Error Responses**:
-```json
-HTTP/1.1 401 Unauthorized
-API Key missing
+## Configuration
 
-HTTP/1.1 403 Forbidden
-Invalid API Key
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `SMS_CHECK_INTERVAL` | 10s | SMS polling interval |
+| `NETWORK_CHECK_INTERVAL` | 60s | WiFi check interval |
+| `WIFI_CONNECT_TIMEOUT` | 15s | WiFi connection timeout |
+| `HTTP_TIMEOUT` | 30s | HTTP request timeout |
+| `ENABLE_SERIAL_DEBUG` | 1 | Debug output (0 = off) |
 
-HTTP/1.1 500 Internal Server Error
-{
-  "error": "error description"
-}
-```
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| WiFi won't connect | Check SSID/password in secrets.h |
+| Modem not responding | Power cycle, check SIM insertion |
+| HTTPS fails | Verify server SSL (Let's Encrypt supported) |
+| SMS not decoded | Enable `SMS_ENCODING_UCS2` in config.h |
+
+## Future: GPRS Fallback
+
+GPRS code is preserved in `modem_manager.cpp` (commented). Uncomment to add WiFi→GPRS fallback.
 
 ## License
 
-MIT License
-
-## Related Projects
-
-- **SIM-Orchestrator**: Backend server (C# ASP.NET Core) that receives SMS from SIM-Relay and forwards to Telegram
-- **LilyGO-Modem-Series**: Original examples and libraries for LilyGO modem boards
-
-## Credits
-
-- Based on [LilyGO T-A76XX](https://github.com/Xinyuan-LilyGO/LilyGO-T-A76XX) examples
-- UCS2 decoding from ReadSMS example
-- TinyGSM library (fork by lewisxhe)
-
-## Support
-
-For issues and questions, please open an issue on GitHub.
+MIT

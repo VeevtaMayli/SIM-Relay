@@ -9,8 +9,9 @@
 // TIMING CONFIGURATION
 // ============================================
 #define SMS_CHECK_INTERVAL 10000      // Check for new SMS every 10 seconds
-#define NETWORK_CHECK_INTERVAL 60000  // Check network status every 60 seconds
+#define NETWORK_CHECK_INTERVAL 60000  // Check WiFi status every 60 seconds
 #define HTTP_TIMEOUT 30000            // HTTP request timeout (30 seconds)
+#define WIFI_CONNECT_TIMEOUT 15000    // WiFi connection timeout (15 seconds)
 
 // ============================================
 // DEBUG CONFIGURATION

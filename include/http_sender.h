@@ -3,14 +3,15 @@
 
 #include <Arduino.h>
 #include "config.h"
-#include <TinyGsmClient.h>
+#include <WiFiClientSecure.h>
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
 #include "sms_reader.h"
+#include "ca_cert.h"
 
 class HttpSender {
 public:
-    HttpSender(TinyGsm& modem);
+    HttpSender();
 
     // Send SMS to server
     bool sendSmsToServer(const SmsMessage& sms);
@@ -22,7 +23,6 @@ public:
     String getLastError() const { return lastError; }
 
 private:
-    TinyGsm& modem;
     int lastStatusCode;
     String lastError;
 

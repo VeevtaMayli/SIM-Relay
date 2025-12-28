@@ -2,11 +2,13 @@
 #include "config.h"
 #include "utilities.h"
 #include "modem_manager.h"
+#include "wifi_manager.h"
 #include "sms_reader.h"
 #include "http_sender.h"
 
 // Global objects
-ModemManager modemManager;
+ModemManager modemManager;  // For SMS operations via LTE modem
+WiFiManager wifiManager;    // For HTTP operations via ESP32 WiFi
 SmsReader* smsReader = nullptr;
 HttpSender* httpSender = nullptr;
 
@@ -35,10 +37,10 @@ void setup() {
     }
     DEBUG_PRINTLN();
 
-    // Connect to network
-    DEBUG_PRINTLN("Step 2: Connecting to network...");
-    if (!modemManager.connectNetwork()) {
-        DEBUG_PRINTLN("FATAL ERROR: Network connection failed!");
+    // Connect to WiFi (for HTTP)
+    DEBUG_PRINTLN("Step 2: Connecting to WiFi...");
+    if (!wifiManager.connect()) {
+        DEBUG_PRINTLN("FATAL ERROR: WiFi connection failed!");
         DEBUG_PRINTLN("System halted. Please restart the device.");
         while (true) {
             delay(1000);
@@ -58,10 +60,10 @@ void setup() {
     }
     DEBUG_PRINTLN();
 
-    // Initialize HTTP sender
+    // Initialize HTTP sender (uses WiFi, not modem)
     DEBUG_PRINTLN("Step 4: Initializing HTTP sender...");
-    httpSender = new HttpSender(modemManager.getModem());
-    DEBUG_PRINTLN("HTTP sender initialized");
+    httpSender = new HttpSender();
+    DEBUG_PRINTLN("HTTP sender initialized (WiFi)");
     DEBUG_PRINTLN();
 
     DEBUG_PRINTLN("========================================");
@@ -73,13 +75,13 @@ void setup() {
 void loop() {
     unsigned long currentMillis = millis();
 
-    // Check network connection periodically
+    // Check WiFi connection periodically
     if (currentMillis - lastNetworkCheck >= NETWORK_CHECK_INTERVAL) {
         lastNetworkCheck = currentMillis;
 
-        if (!modemManager.isConnected()) {
-            DEBUG_PRINTLN("WARNING: Network connection lost!");
-            modemManager.reconnect();
+        if (!wifiManager.isConnected()) {
+            DEBUG_PRINTLN("WARNING: WiFi connection lost!");
+            wifiManager.reconnect();
         }
     }
 

@@ -80,6 +80,12 @@ bool ModemManager::powerOnModem() {
     return true;
 }
 
+// =============================================================================
+// TODO: GPRS fallback - uncomment this section when implementing WiFi->GPRS fallback
+// Currently using WiFi for HTTP, modem only for SMS
+// =============================================================================
+
+/*
 bool ModemManager::connectNetwork() {
     DEBUG_PRINTLN("=== Connecting to Network ===");
 
@@ -154,3 +160,4 @@ void ModemManager::reconnect() {
         DEBUG_PRINTLN("ERROR: Reconnection failed");
     }
 }
+*/
