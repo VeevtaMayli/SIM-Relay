@@ -120,7 +120,7 @@ String PduParser::decodeTimestamp(const String& pdu, int& pos) {
     // Format: YY MM DD HH MM SS TZ
     // Each octet has nibbles swapped (e.g., 62 = 26)
 
-    char buffer[20];
+    char buffer[30];
     uint8_t values[7];
 
     for (int i = 0; i < 7; i++) {
@@ -129,10 +129,18 @@ String PduParser::decodeTimestamp(const String& pdu, int& pos) {
         values[i] = ((byte & PduConst::NIBBLE_LOW) * 10) + (byte >> 4);
     }
 
-    // Format: YYYY-MM-DD HH:MM:SS
-    // Note: Timezone (values[6]) is ignored for simplicity
-    snprintf(buffer, sizeof(buffer), "20%02d-%02d-%02d %02d:%02d:%02d",
-             values[0], values[1], values[2], values[3], values[4], values[5]);
+    // Parse timezone (quarter-hours from GMT)
+    // Bit 7 of TZ byte = sign (0=positive, 1=negative)
+    uint8_t tzByte = hexToByte(pdu.charAt(pos - 2), pdu.charAt(pos - 1));
+    bool tzNegative = (tzByte & 0x08) != 0; // Bit 3 of high nibble
+    int tzQuarters = values[6];
+    int tzHours = tzQuarters / 4;
+    int tzMinutes = (tzQuarters % 4) * 15;
+
+    // Format: YYYY-MM-DD HH:MM:SS±HH:MM
+    snprintf(buffer, sizeof(buffer), "20%02d-%02d-%02d %02d:%02d:%02d%c%02d:%02d",
+             values[0], values[1], values[2], values[3], values[4], values[5],
+             tzNegative ? '-' : '+', tzHours, tzMinutes);
 
     return String(buffer);
 }
