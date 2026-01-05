@@ -32,7 +32,6 @@
 // ============================================
 // SMS CONFIGURATION
 // ============================================
-#define SMS_ENCODING_UCS2 1           // Use UCS2 encoding for SMS (supports Cyrillic, emoji)
 #define SMS_DELETE_AFTER_SEND 1       // Delete SMS from SIM after successful send to server
 
 #endif // CONFIG_H
