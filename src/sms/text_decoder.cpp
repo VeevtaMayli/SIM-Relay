@@ -91,6 +91,14 @@ String TextDecoder::decodeUcs2(const uint8_t* data, int byteCount) {
     int i = 0;
     uint16_t prevHigh = 0;
 
+    // Skip BOM (Byte Order Mark) 0xFEFF or 0xFFFE if present
+    if (byteCount >= 2) {
+        uint16_t firstChar = (data[0] << 8) | data[1];
+        if (firstChar == 0xFEFF || firstChar == 0xFFFE) {
+            i = 2; // Skip BOM
+        }
+    }
+
     while (i < byteCount - 1) {
         uint16_t code = (data[i] << 8) | data[i + 1];
         i += 2;

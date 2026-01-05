@@ -101,9 +101,9 @@ String PduParser::decodePhoneNumber(const String& pdu, int& pos, int digitCount)
 
 String PduParser::decodeAlphanumeric(const String& pdu, int& pos, int senderLen) {
     // Alphanumeric sender is encoded in GSM 7-bit
-    // senderLen = number of semi-octets (nibbles) in address field
-    int byteCount = (senderLen + 1) / 2; // Convert semi-octets to bytes (round up)
-    int charCount = (byteCount * 8) / 7;  // Number of GSM 7-bit characters
+    // senderLen = number of characters * 2 (in semi-octet units for alphanumeric)
+    int charCount = (senderLen + 1) / 2;  // Convert to actual character count
+    int byteCount = (charCount * 7 + 7) / 8;  // Bytes needed for packed GSM 7-bit
 
     // Use static buffer to save stack space on MCU
     static uint8_t buffer[50];
