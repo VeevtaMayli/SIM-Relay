@@ -6,7 +6,7 @@
 #include <WiFiClientSecure.h>
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
-#include "sms_reader.h"
+#include "sms/sms_types.h"
 #include "ca_cert.h"
 
 class HttpSender {

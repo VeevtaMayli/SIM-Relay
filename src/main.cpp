@@ -3,109 +3,14 @@
 #include "utilities.h"
 #include "modem_manager.h"
 #include "wifi_manager.h"
-#include "sms_reader.h"
+#include "sms_manager.h"
 #include "http_sender.h"
-#include <map>
-#include <vector>
-
-// ============================================
-// MULTI-PART SMS CONCATENATOR
-// ============================================
-
-struct SmsPartBuffer {
-    String sender;
-    String timestamp;
-    std::vector<String> parts;  // Indexed by partNumber-1
-    uint8_t totalParts;
-    unsigned long firstPartTime;  // millis() when first part arrived
-
-    SmsPartBuffer() : totalParts(0), firstPartTime(0) {}
-};
-
-class SmsConcatenator {
-private:
-    std::map<uint16_t, SmsPartBuffer> partBuffers;  // Key: refNumber
-    static const unsigned long PART_TIMEOUT = 300000; // 5 minutes
-
-public:
-    // Add a part and return concatenated SMS if all parts are received
-    // Returns nullptr if more parts are needed
-    SmsMessage* addPart(const SmsMessage& sms) {
-        if (!sms.partInfo.isMultiPart) {
-            // Single-part SMS, return as-is
-            static SmsMessage result;
-            result = sms;
-            return &result;
-        }
-
-        uint16_t ref = sms.partInfo.refNumber;
-
-        // Initialize buffer if this is the first part
-        if (partBuffers.find(ref) == partBuffers.end()) {
-            partBuffers[ref].sender = sms.sender;
-            partBuffers[ref].timestamp = sms.timestamp;
-            partBuffers[ref].totalParts = sms.partInfo.totalParts;
-            partBuffers[ref].parts.resize(sms.partInfo.totalParts);
-            partBuffers[ref].firstPartTime = millis();
-        }
-
-        SmsPartBuffer& buffer = partBuffers[ref];
-
-        // Store this part (1-based indexing)
-        int idx = sms.partInfo.partNumber - 1;
-        if (idx >= 0 && idx < buffer.totalParts) {
-            buffer.parts[idx] = sms.text;
-        }
-
-        // Check if all parts received
-        bool allReceived = true;
-        for (int i = 0; i < buffer.totalParts; i++) {
-            if (buffer.parts[i].length() == 0) {
-                allReceived = false;
-                break;
-            }
-        }
-
-        if (allReceived) {
-            // Concatenate all parts
-            static SmsMessage result;
-            result.index = sms.index;  // Use last part's index
-            result.sender = buffer.sender;
-            result.timestamp = buffer.timestamp;
-            result.text = "";
-            for (int i = 0; i < buffer.totalParts; i++) {
-                result.text += buffer.parts[i];
-            }
-            result.partInfo.isMultiPart = false;  // Mark as complete
-
-            // Remove from buffer
-            partBuffers.erase(ref);
-
-            DEBUG_PRINTF("✓ Concatenated %d-part SMS (ref: %d)\n", buffer.totalParts, ref);
-            return &result;
-        }
-
-        return nullptr;  // More parts needed
-    }
-
-    // Clean up old partial messages
-    void cleanup() {
-        unsigned long now = millis();
-        for (auto it = partBuffers.begin(); it != partBuffers.end(); ) {
-            if (now - it->second.firstPartTime > PART_TIMEOUT) {
-                DEBUG_PRINTF("⚠ Timeout: Dropping incomplete multi-part SMS (ref: %d)\n", it->first);
-                it = partBuffers.erase(it);
-            } else {
-                ++it;
-            }
-        }
-    }
-};
+#include "sms/sms_concatenator.h"
 
 // Global objects
 ModemManager modemManager;  // For SMS operations via LTE modem
 WiFiManager wifiManager;    // For HTTP operations via ESP32 WiFi
-SmsReader* smsReader = nullptr;
+SmsManager* smsManager = nullptr;
 HttpSender* httpSender = nullptr;
 SmsConcatenator smsConcatenator;  // Multi-part SMS handler
 
@@ -146,11 +51,11 @@ void setup() {
     }
     DEBUG_PRINTLN();
 
-    // Initialize SMS reader
-    DEBUG_PRINTLN("Step 3: Initializing SMS reader...");
-    smsReader = new SmsReader(modemManager.getModem());
-    if (!smsReader->init()) {
-        DEBUG_PRINTLN("FATAL ERROR: SMS reader initialization failed!");
+    // Initialize SMS manager
+    DEBUG_PRINTLN("Step 3: Initializing SMS manager...");
+    smsManager = new SmsManager(modemManager.getModem());
+    if (!smsManager->init()) {
+        DEBUG_PRINTLN("FATAL ERROR: SMS manager initialization failed!");
         DEBUG_PRINTLN("System halted. Please restart the device.");
         while (true) {
             delay(1000);
@@ -193,11 +98,11 @@ void loop() {
     if (currentMillis - lastSmsCheck >= SMS_CHECK_INTERVAL) {
         lastSmsCheck = currentMillis;
 
-        // Get list of unread SMS
+        // Get list of SMS
         int indices[10]; // Maximum 10 SMS at once
         int count = 0;
 
-        if (smsReader->getUnreadSmsList(indices, 10, count)) {
+        if (smsManager->getSmsList(indices, 10, count)) {
             DEBUG_PRINTF("\n>>> Found %d SMS messages <<<\n\n", count);
 
             // Track indices of parts to delete after successful send
@@ -208,7 +113,7 @@ void loop() {
                 DEBUG_PRINTF("--- Processing SMS %d/%d (Index: %d) ---\n", i + 1, count, indices[i]);
 
                 // Read SMS
-                SmsMessage sms = smsReader->readSms(indices[i]);
+                SmsMessage sms = smsManager->readSms(indices[i]);
 
                 if (sms.isValid()) {
                     // Add to concatenator (handles both single and multi-part SMS)
@@ -258,7 +163,7 @@ void loop() {
 #if SMS_DELETE_AFTER_SEND
             // Delete all processed parts
             for (int idx : partsToDelete) {
-                if (smsReader->deleteSms(idx)) {
+                if (smsManager->deleteSms(idx)) {
                     DEBUG_PRINTF("✓ SMS %d deleted from SIM\n", idx);
                 } else {
                     DEBUG_PRINTF("✗ Failed to delete SMS %d from SIM\n", idx);

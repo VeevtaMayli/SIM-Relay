@@ -5,12 +5,13 @@ SMS Gateway for LilyGO T-Call-A7670X. Receives SMS via LTE modem, forwards to se
 ## Architecture
 
 ```
-SIM Card ──► A7670 Modem ──► SmsReader ─┐
-                                        ├──► main.cpp ──► Server (HTTPS)
+SIM Card ──► A7670 Modem ──► SmsManager ───┐
+                                           ├──► main.cpp ──► Server (HTTPS)
 WiFi Router ──► ESP32 WiFi ──► HttpSender ─┘
 ```
 
-**Hybrid design**: LTE modem for SMS, ESP32 WiFi for HTTP.
+**Hybrid design**: LTE modem for SMS (PDU mode), ESP32 WiFi for HTTP.
+**Features**: Multi-part SMS concatenation, GSM 7-bit & UCS-2 decoding, alphanumeric sender support.
 
 ## Quick Start
 
@@ -34,13 +35,18 @@ WiFi Router ──► ESP32 WiFi ──► HttpSender ─┘
 
 ```
 include/
-├── config.h          # Timing, debug settings
-├── secrets.h         # Credentials (git-ignored)
-├── ca_cert.h         # Let's Encrypt root CA
-├── wifi_manager.h    # WiFi connection
-├── modem_manager.h   # LTE modem (SMS only)
-├── sms_reader.h      # SMS reading/decoding
-└── http_sender.h     # HTTPS POST via WiFi
+├── config.h               # Timing, debug settings
+├── secrets.h              # Credentials (git-ignored)
+├── ca_cert.h              # Let's Encrypt root CA
+├── wifi_manager.h         # WiFi connection
+├── modem_manager.h        # LTE modem (SMS only)
+├── sms_manager.h          # SMS operations (read, delete, list)
+├── http_sender.h          # HTTPS POST via WiFi
+└── sms/
+    ├── sms_types.h        # Data structures
+    ├── pdu_parser.h       # PDU → SmsMessage
+    ├── text_decoder.h     # GSM7/UCS2 → UTF-8
+    └── sms_concatenator.h # Multi-part buffering
 ```
 
 ## API Contract
@@ -81,7 +87,7 @@ X-API-Key: <your-api-key>
 | WiFi won't connect | Check SSID/password in secrets.h |
 | Modem not responding | Power cycle, check SIM insertion |
 | HTTPS fails | Verify server SSL (Let's Encrypt supported) |
-| SMS not decoded | Enable `SMS_ENCODING_UCS2` in config.h |
+| SMS not decoded | Check debug logs for PDU parsing errors |
 
 ## Future: GPRS Fallback
 
